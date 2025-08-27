@@ -1,4 +1,4 @@
-name: PR Slack Integration
+name: PR Slack Thread Integration
 
 on:
   pull_request:
@@ -8,12 +8,13 @@ jobs:
   notify-slack:
     runs-on: ubuntu-latest
     steps:
+      # 1️⃣ Скачиваем thread_ts для этого PR, если есть
       - name: Download thread_ts artifact
         uses: actions/download-artifact@v4
         with:
           name: pr-${{ github.event.pull_request.number }}-thread
           path: ./thread
-        continue-on-error: true  # чтобы workflow не падал, если artifact ещё не существует
+        continue-on-error: true
 
       - name: Read thread_ts
         id: read_thread
@@ -24,27 +25,39 @@ jobs:
             echo "THREAD_TS=" >> $GITHUB_ENV
           fi
 
-      - name: Notify Slack
-        id: slack
-        uses: slackapi/slack-github-action@v1.23.0
-        with:
-          channel-id: 'C09D2BV45PS'
-          slack-message: |
-            :bell: *PR Update*: <${{ github.event.pull_request.html_url }}|${{ github.event.pull_request.title }}>
-            *Author*: ${{ github.event.pull_request.user.login }}
-            *Reviewers*: ${{ join(github.event.pull_request.requested_reviewers.*.login, ', ') }}
-          update-ts: ${{ env.THREAD_TS }}
+      # 2️⃣ Отправляем сообщение в Slack
+      - name: Send message to Slack
+        id: slack_msg
+        run: |
+          if [ -z "$THREAD_TS" ]; then
+            # создаём новый тред
+            RESPONSE=$(curl -s -X POST \
+              -H "Authorization: Bearer $SLACK_BOT_TOKEN" \
+              -H "Content-type: application/json" \
+              --data "{\"channel\":\"C09D2BV45PS\",\"text\":\":bell: *PR Created*: <${{ github.event.pull_request.html_url }}|${{ github.event.pull_request.title }}>\n*Author*: ${{ github.event.pull_request.user.login }}\n*Reviewers*: ${{ join(github.event.pull_request.requested_reviewers.*.login, ', ') }}\"}" \
+              https://slack.com/api/chat.postMessage)
+            TS=$(echo $RESPONSE | jq -r '.ts')
+            echo "THREAD_TS=$TS" >> $GITHUB_ENV
+          else
+            # отправляем в существующий тред
+            curl -s -X POST \
+              -H "Authorization: Bearer $SLACK_BOT_TOKEN" \
+              -H "Content-type: application/json" \
+              --data "{\"channel\":\"C09D2BV45PS\",\"text\":\":arrow_up: PR Update: <${{ github.event.pull_request.html_url }}|${{ github.event.pull_request.title }}>\",\"thread_ts\":\"$THREAD_TS\"}" \
+              https://slack.com/api/chat.postMessage
+          fi
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
 
-      - name: Save thread_ts file
-        if: env.THREAD_TS == ''
+      # 3️⃣ Если новый PR, сохраняем ts как artifact
+      - name: Save thread_ts artifact
+        if: env.THREAD_TS != ''
         run: |
           mkdir -p ./thread
-          echo "${{ steps.slack.outputs.ts }}" > ./thread/thread_ts.txt
+          echo "$THREAD_TS" > ./thread/thread_ts.txt
 
       - name: Upload thread_ts artifact
-        if: env.THREAD_TS == ''
+        if: env.THREAD_TS != ''
         uses: actions/upload-artifact@v4
         with:
           name: pr-${{ github.event.pull_request.number }}-thread
