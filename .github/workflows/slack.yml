@@ -1,0 +1,20 @@
+name: PR Slack Integration
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+
+jobs:
+  notify-slack:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Notify Slack about PR
+        uses: slackapi/slack-github-action@v1.23.0
+        with:
+          slack-token: ${{ secrets.SLACK_BOT_TOKEN }}
+          channel-id: 'C09D2BV45PS'
+          thread-ts: ''
+          text: |
+            :bell: *New PR Created*: <${{ github.event.pull_request.html_url }}|${{ github.event.pull_request.title }}>
+            *Author*: ${{ github.event.pull_request.user.login }}
+            *Reviewers*: ${{ join(github.event.pull_request.requested_reviewers.*.login, ', ') }}
