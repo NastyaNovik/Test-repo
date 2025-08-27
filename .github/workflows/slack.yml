@@ -38,11 +38,13 @@ jobs:
       - name: Send message to Slack
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          GH_PAT: ${{ secrets.GH_PAT }}
           PR_URL: ${{ env.PR_URL }}
           PR_TITLE: ${{ env.PR_TITLE }}
           PR_AUTHOR: ${{ env.PR_AUTHOR }}
           THREAD_TS: ${{ env.THREAD_TS }}
         run: |
+          echo "Current THREAD_TS: $THREAD_TS"
           if [ -z "$THREAD_TS" ]; then
             # Создаём новый тред
             JSON=$(jq -n \
@@ -57,13 +59,15 @@ jobs:
             echo "Slack response: $RESPONSE"
             TS=$(echo $RESPONSE | jq -r '.ts')
             echo "THREAD_TS=$TS" >> $GITHUB_ENV
+            echo "Created new thread_ts: $TS"
 
             # Сохраняем thread_ts в комментарий на PR
-            curl -s -X POST \
-              -H "Authorization: Bearer $GITHUB_TOKEN" \
+            RESPONSE_COMMENT=$(curl -s -X POST \
+              -H "Authorization: Bearer $GH_PAT" \
               -H "Content-type: application/json" \
               --data "{\"body\": \"SLACK_THREAD_TS: $TS\"}" \
-              https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments
+              https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments)
+            echo "Comment response: $RESPONSE_COMMENT"
           else
             # Отправляем в существующий тред
             JSON=$(jq -n \
@@ -77,4 +81,5 @@ jobs:
               --data "$JSON" \
               https://slack.com/api/chat.postMessage)
             echo "Slack response: $RESPONSE"
+            echo "Used existing thread_ts: $THREAD_TS"
           fi
