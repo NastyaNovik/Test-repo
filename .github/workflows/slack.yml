@@ -8,13 +8,44 @@ jobs:
   notify-slack:
     runs-on: ubuntu-latest
     steps:
-      - name: Notify Slack about PR
+      - name: Download thread_ts artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: pr-${{ github.event.pull_request.number }}-thread
+          path: ./thread
+
+      - name: Read thread_ts
+        id: read_thread
+        run: |
+          if [ -f ./thread/thread_ts.txt ]; then
+            echo "THREAD_TS=$(cat ./thread/thread_ts.txt)" >> $GITHUB_ENV
+          else
+            echo "THREAD_TS=" >> $GITHUB_ENV
+          fi
+
+      - name: Notify Slack
+        id: slack
         uses: slackapi/slack-github-action@v1.23.0
         with:
           channel-id: 'C09D2BV45PS'
           slack-message: |
-            :bell: *New PR Created*: <${{ github.event.pull_request.html_url }}|${{ github.event.pull_request.title }}>
+            :bell: *PR Update*: <${{ github.event.pull_request.html_url }}|${{ github.event.pull_request.title }}>
             *Author*: ${{ github.event.pull_request.user.login }}
             *Reviewers*: ${{ join(github.event.pull_request.requested_reviewers.*.login, ', ') }}
+          update-ts: ${{ env.THREAD_TS }}
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+
+
+      - name: Save thread_ts file
+        if: env.THREAD_TS == ''
+        run: |
+          mkdir -p ./thread
+          echo "${{ steps.slack.outputs.ts }}" > ./thread/thread_ts.txt
+
+      - name: Upload thread_ts artifact
+        if: env.THREAD_TS == ''
+        uses: actions/upload-artifact@v3
+        with:
+          name: pr-${{ github.event.pull_request.number }}-thread
+          path: ./thread
