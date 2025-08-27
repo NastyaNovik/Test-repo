@@ -5,10 +5,34 @@ on:
     types: [opened, reopened, synchronize]
 
 jobs:
-  notify-slack:
+  pr-opened:
+    if: github.event.action == 'opened' || github.event.action == 'reopened'
     runs-on: ubuntu-latest
     steps:
-      # 1️⃣ Скачиваем thread_ts для этого PR, если есть
+      - name: Send new PR message to Slack
+        id: slack_msg
+        run: |
+          RESPONSE=$(curl -s -X POST \
+            -H "Authorization: Bearer $SLACK_BOT_TOKEN" \
+            -H "Content-type: application/json" \
+            --data "{\"channel\":\"C09D2BV45PS\",\"text\":\":bell: *New PR*: <${{ github.event.pull_request.html_url }}|${{ github.event.pull_request.title }}>\n*Author*: ${{ github.event.pull_request.user.login }}\n*Reviewers*: ${{ join(github.event.pull_request.requested_reviewers.*.login, ', ') }}\"}" \
+            https://slack.com/api/chat.postMessage)
+          TS=$(echo $RESPONSE | jq -r '.ts')
+          echo "THREAD_TS=$TS" >> $GITHUB_ENV
+      - name: Save thread_ts artifact
+        run: |
+          mkdir -p ./thread
+          echo "$THREAD_TS" > ./thread/thread_ts.txt
+      - name: Upload thread_ts artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr-${{ github.event.pull_request.number }}-thread
+          path: ./thread
+
+  pr-updated:
+    if: github.event.action == 'synchronize'
+    runs-on: ubuntu-latest
+    steps:
       - name: Download thread_ts artifact
         uses: actions/download-artifact@v4
         with:
@@ -25,40 +49,15 @@ jobs:
             echo "THREAD_TS=" >> $GITHUB_ENV
           fi
 
-      # 2️⃣ Отправляем сообщение в Slack
-      - name: Send message to Slack
-        id: slack_msg
+      - name: Send update to Slack thread
         run: |
-          if [ -z "$THREAD_TS" ]; then
-            # создаём новый тред
-            RESPONSE=$(curl -s -X POST \
-              -H "Authorization: Bearer $SLACK_BOT_TOKEN" \
-              -H "Content-type: application/json" \
-              --data "{\"channel\":\"C09D2BV45PS\",\"text\":\":bell: *PR Created*: <${{ github.event.pull_request.html_url }}|${{ github.event.pull_request.title }}>\n*Author*: ${{ github.event.pull_request.user.login }}\n*Reviewers*: ${{ join(github.event.pull_request.requested_reviewers.*.login, ', ') }}\"}" \
-              https://slack.com/api/chat.postMessage)
-            TS=$(echo $RESPONSE | jq -r '.ts')
-            echo "THREAD_TS=$TS" >> $GITHUB_ENV
-          else
-            # отправляем в существующий тред
+          if [ -n "$THREAD_TS" ]; then
             curl -s -X POST \
               -H "Authorization: Bearer $SLACK_BOT_TOKEN" \
               -H "Content-type: application/json" \
               --data "{\"channel\":\"C09D2BV45PS\",\"text\":\":arrow_up: PR Update: <${{ github.event.pull_request.html_url }}|${{ github.event.pull_request.title }}>\",\"thread_ts\":\"$THREAD_TS\"}" \
               https://slack.com/api/chat.postMessage
-          fi
+          else
+            echo "No THREAD_TS found, skipping."
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
-
-      # 3️⃣ Если новый PR, сохраняем ts как artifact
-      - name: Save thread_ts artifact
-        if: env.THREAD_TS != ''
-        run: |
-          mkdir -p ./thread
-          echo "$THREAD_TS" > ./thread/thread_ts.txt
-
-      - name: Upload thread_ts artifact
-        if: env.THREAD_TS != ''
-        uses: actions/upload-artifact@v4
-        with:
-          name: pr-${{ github.event.pull_request.number }}-thread
-          path: ./thread
