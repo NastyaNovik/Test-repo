@@ -1,3 +1,5 @@
+name: PR Slack Thread Integration
+
 on:
   pull_request:
     types: [opened, reopened, synchronize]
@@ -6,6 +8,10 @@ jobs:
   slack-pr-thread:
     runs-on: ubuntu-latest
     steps:
+      - name: Check out repo
+        uses: actions/checkout@v3
+
+      # 1️⃣ Получаем thread_ts из комментариев PR, если он уже есть
       - name: Get thread_ts from PR comments
         id: get_thread
         uses: actions/github-script@v7
@@ -19,29 +25,57 @@ jobs:
             const threadComment = comments.data.find(c => c.body.startsWith('SLACK_THREAD_TS:'));
             return threadComment ? threadComment.body.split('SLACK_THREAD_TS:')[1].trim() : '';
 
+      # 2️⃣ Подготавливаем переменные для Slack
+      - name: Prepare Slack variables
+        id: slack_vars
+        run: |
+          echo "PR_URL=${{ github.event.pull_request.html_url }}" >> $GITHUB_ENV
+          echo "PR_TITLE=${{ github.event.pull_request.title }}" >> $GITHUB_ENV
+          echo "PR_AUTHOR=${{ github.event.pull_request.user.login }}" >> $GITHUB_ENV
+          echo "THREAD_TS=${{ steps.get_thread.outputs.result }}" >> $GITHUB_ENV
+
+      # 3️⃣ Отправляем сообщение в Slack
       - name: Send message to Slack
-        id: slack
+        id: slack_msg
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          PR_URL: ${{ env.PR_URL }}
+          PR_TITLE: ${{ env.PR_TITLE }}
+          PR_AUTHOR: ${{ env.PR_AUTHOR }}
+          THREAD_TS: ${{ env.THREAD_TS }}
         run: |
-          if [ -z "${{ steps.get_thread.outputs.result }}" ]; then
-            # создаём новый тред
+          if [ -z "$THREAD_TS" ]; then
+            # Создаём новый тред
+            JSON=$(jq -n \
+              --arg channel "C09D2BV45PS" \
+              --arg text ":bell: *New PR*: <$PR_URL|$PR_TITLE>\n*Author*: $PR_AUTHOR" \
+              '{channel: $channel, text: $text}')
             RESPONSE=$(curl -s -X POST \
               -H "Authorization: Bearer $SLACK_BOT_TOKEN" \
               -H "Content-type: application/json" \
-              --data "{\"channel\":\"C09D2BV45PS\",\"text\":\":bell: *PR*: <${{ github.event.pull_request.html_url }}|${{ github.event.pull_request.title }}>\n*Author*: ${{ github.event.pull_request.user.login }}\"}" \
+              --data "$JSON" \
               https://slack.com/api/chat.postMessage)
+            echo "Slack response: $RESPONSE"
             TS=$(echo $RESPONSE | jq -r '.ts')
-            # сохраняем в комментарий на PR
+            echo "THREAD_TS=$TS" >> $GITHUB_ENV
+
+            # Сохраняем thread_ts в комментарий на PR
             curl -s -X POST \
               -H "Authorization: Bearer $GITHUB_TOKEN" \
               -H "Content-type: application/json" \
               --data "{\"body\": \"SLACK_THREAD_TS: $TS\"}" \
               https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments
           else
-            # обновляем существующий тред
-            curl -s -X POST \
+            # Отправляем в существующий тред
+            JSON=$(jq -n \
+              --arg channel "C09D2BV45PS" \
+              --arg text ":arrow_up: PR Update: <$PR_URL|$PR_TITLE>" \
+              --arg thread_ts "$THREAD_TS" \
+              '{channel: $channel, text: $text, thread_ts: $thread_ts}')
+            RESPONSE=$(curl -s -X POST \
               -H "Authorization: Bearer $SLACK_BOT_TOKEN" \
               -H "Content-type: application/json" \
-              --data "{\"channel\":\"C09D2BV45PS\",\"text\":\":arrow_up: PR Update: <${{ github.event.pull_request.html_url }}|${{ github.event.pull_request.title }}>\",\"thread_ts\":\"${{ steps.get_thread.outputs.result }}\"}" \
-              https://slack.com/api/chat.postMessage
+              --data "$JSON" \
+              https://slack.com/api/chat.postMessage)
+            echo "Slack response: $RESPONSE"
+          fi
