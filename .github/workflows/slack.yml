@@ -9,10 +9,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download thread_ts artifact
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: pr-${{ github.event.pull_request.number }}-thread
           path: ./thread
+        continue-on-error: true  # чтобы workflow не падал, если artifact ещё не существует
 
       - name: Read thread_ts
         id: read_thread
@@ -36,7 +37,6 @@ jobs:
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
 
-
       - name: Save thread_ts file
         if: env.THREAD_TS == ''
         run: |
@@ -45,7 +45,7 @@ jobs:
 
       - name: Upload thread_ts artifact
         if: env.THREAD_TS == ''
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: pr-${{ github.event.pull_request.number }}-thread
           path: ./thread
