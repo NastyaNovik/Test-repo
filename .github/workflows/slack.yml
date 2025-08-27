@@ -11,6 +11,8 @@ jobs:
     steps:
       - name: Send new PR message to Slack
         id: slack_msg
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
         run: |
           RESPONSE=$(curl -s -X POST \
             -H "Authorization: Bearer $SLACK_BOT_TOKEN" \
