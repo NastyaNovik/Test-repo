@@ -43,7 +43,6 @@ jobs:
         run: |
           echo "Current THREAD_TS: $THREAD_TS"
           if [ -z "$THREAD_TS" ]; then
-            # Создаём новый тред
             JSON=$(jq -n \
               --arg channel "C09D2BV45PS" \
               --arg text ":bell: *New PR*: <$PR_URL|$PR_TITLE>\n*Author*: $PR_AUTHOR" \
