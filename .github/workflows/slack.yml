@@ -58,7 +58,6 @@ jobs:
             echo "THREAD_TS=$TS" >> $GITHUB_ENV
             echo "Created new thread_ts: $TS"
 
-            # Сохраняем thread_ts в комментарий на PR
             RESPONSE_COMMENT=$(curl -s -X POST \
               -H "Authorization: Bearer $GH_PAT" \
               -H "Content-type: application/json" \
@@ -66,7 +65,6 @@ jobs:
               https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments)
             echo "Comment response: $RESPONSE_COMMENT"
           else
-            # Отправляем в существующий тред
             JSON=$(jq -n \
               --arg channel "C09D2BV45PS" \
               --arg text ":arrow_up: PR Update: <$PR_URL|$PR_TITLE>" \
