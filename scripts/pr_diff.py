@@ -42,7 +42,7 @@ if current_file:
         "changes": changes
     })
 
-output_json = {"files": entries}
+output_json = {"files_changed": entries}
 
 with open(output_file, "w", encoding="utf-8") as out:
     json.dump(output_json, out, indent=2, ensure_ascii=False)
