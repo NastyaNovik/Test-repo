@@ -1,5 +1,6 @@
 import json
 import sys
+import codecs
 
 diff_file = sys.argv[1]
 output_file = sys.argv[2]
@@ -9,7 +10,7 @@ current_file = None
 changes = []
 status = "modified"
 
-with open(diff_file, "r") as f:
+with open(diff_file, "r", encoding="utf-8") as f:
     for line in f:
         line = line.rstrip("\n")
 
@@ -20,7 +21,8 @@ with open(diff_file, "r") as f:
                     "status": status,
                     "changes": changes
                 })
-            current_file = line.split(" b/")[-1].strip()
+            raw_file = line.split(" b/")[-1].strip().strip('"')
+            current_file = codecs.decode(raw_file, "unicode_escape")
             changes = []
             status = "modified"
 
@@ -42,8 +44,8 @@ if current_file:
 
 output_json = {"files": entries}
 
-with open(output_file, "w") as out:
-    json.dump(output_json, out, indent=2)
+with open(output_file, "w", encoding="utf-8") as out:
+    json.dump(output_json, out, indent=2, ensure_ascii=False)
 
-with open(output_file, "r") as out:
+with open(output_file, "r", encoding="utf-8") as out:
     print(out.read())
