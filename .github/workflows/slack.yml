@@ -106,12 +106,13 @@ jobs:
         run: |
           git fetch origin +refs/pull/${{ github.event.pull_request.number }}/merge
           git log -1 --pretty=format:'%ae'
-
+          
       - name: Get PR diff
         run: |
           curl -s \
-            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-            -H "Accept: application/vnd.github.v3.diff" \
-            https://api.github.com/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }} \
-            > pr.diff
-          head -n 500 pr.diff || echo "No diff found"
+          -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+          -H "Accept: application/vnd.github.v3.diff" \
+          https://api.github.com/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }} \
+          > pr.diff
+
+          python3 pr_diff.py pr.diff pr.clean.json
