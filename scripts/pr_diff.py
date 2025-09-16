@@ -7,26 +7,32 @@ output_file = sys.argv[2]
 entries = []
 current_file = None
 changes = []
+is_new_file = False
 
 with open(diff_file, "r") as f:
     for line in f:
         line = line.rstrip("\n")
         if line.startswith("diff --git"):
             if current_file:
+                status = "added" if is_new_file else ("modified" if changes else "modified")
                 entries.append({
                     "file": current_file,
-                    "status": "modified" if changes else "added",
+                    "status": status,
                     "changes": changes
                 })
             current_file = line.split(" b/")[-1].strip()
             changes = []
+            is_new_file = False
+        elif line.startswith("new file mode"):
+            is_new_file = True
         elif line.startswith("+") or line.startswith("-"):
             changes.append(line)
 
 if current_file:
+    status = "added" if is_new_file else ("modified" if changes else "modified")
     entries.append({
         "file": current_file,
-        "status": "modified" if changes else "added",
+        "status": status,
         "changes": changes
     })
 
