@@ -115,4 +115,4 @@ jobs:
           https://api.github.com/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }} \
           > pr.diff
 
-          python3 pr_diff.py pr.diff pr.clean.json
+          python3 scripts/pr_diff.py pr.diff pr.clean.json
