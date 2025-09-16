@@ -1,11 +1,12 @@
 import json
 import sys
-from google.cloud import aiplatform
+import vertexai
+from vertexai.preview.language_models import TextGenerationModel
 
 input_json = sys.argv[1]
 PROJECT_ID = "iw-team-05-ab76"
 
-aiplatform.init(project=PROJECT_ID)
+vertexai.init(project=PROJECT_ID)
 
 with open(input_json, "r", encoding="utf-8") as f:
     pr_diff = json.load(f)
@@ -19,7 +20,7 @@ for file in pr_diff.get("files_changed", []):
 
 prompt_text = "\n".join(prompt_lines)
 
-model = aiplatform.TextGenerationModel.from_pretrained("text-bison@001")
+model = TextGenerationModel.from_pretrained("text-bison@001")
 
 response = model.predict(
     prompt_text,
