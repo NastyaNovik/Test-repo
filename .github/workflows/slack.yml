@@ -101,7 +101,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install google-cloud-aiplatform
+          pip install --upgrade google-cloud-aiplatform
           
       - name: Print raw event JSON
         run: echo '${{ toJson(github.event) }}'
