@@ -78,18 +78,99 @@
 #             echo "Used existing thread_ts: $THREAD_TS"
 #           fi
 
-name: Print PR Data
+# name: Print PR Data
+
+# on:
+#   pull_request:
+#     types: [opened, reopened, synchronize]
+
+# jobs:
+#   show-pr-data:
+#     runs-on: ubuntu-latest
+#     steps:
+#       - name: Checkout PR code
+#         uses: actions/checkout@v3
+#         with:
+#           fetch-depth: 0
+
+#       - name: Set up Python
+#         uses: actions/setup-python@v4
+#         with:
+#           python-version: '3.13.6'
+
+#       - name: Install dependencies
+#         run: |
+#           python -m pip install --upgrade pip
+#           pip install --upgrade google-cloud-aiplatform
+          
+#       - name: Print raw event JSON
+#         run: echo '${{ toJson(github.event) }}'
+
+#       - name: Print PR data
+#         run: |
+#           echo "PR URL: ${{ github.event.pull_request.html_url }}"
+#           echo "PR Title: ${{ github.event.pull_request.title }}"
+#           echo "PR Author: ${{ github.event.pull_request.user.login }}"
+
+#       - name: Get PR committer email
+#         run: |
+#           git fetch origin +refs/pull/${{ github.event.pull_request.number }}/merge
+#           git log -1 --pretty=format:'%ae'
+          
+#       - name: Get PR diff
+#         run: |
+#           curl -s \
+#           -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+#           -H "Accept: application/vnd.github.v3.diff" \
+#           https://api.github.com/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }} \
+#           > pr.diff
+
+#           python3 scripts/pr_diff.py pr.diff pr.clean.json
+
+#       - name: Generate PR summary via Vertex AI
+#         run: python3 scripts/generate_pr_summary.py pr.clean.json
+
+        
+#       - name: Get PR comments
+#         id: pr-comments
+#         run: |
+#           PR_NUMBER=${{ github.event.pull_request.number }}
+#           REPO=${{ github.repository }}
+          
+#           COMMENTS=$(curl -s \
+#           -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+#           -H "Accept: application/vnd.github+json" \
+#           https://api.github.com/repos/$REPO/issues/$PR_NUMBER/comments \
+#           | jq -c '[.[] | .body]')
+          
+#           echo "PR_COMMENTS=$COMMENTS" >> $GITHUB_ENV
+
+#       - name: Get PR changed files
+#         id: changed-files
+#         run: |
+#           PR_NUMBER=${{ github.event.pull_request.number }}
+#           REPO=${{ github.repository }}
+
+#           FILES=$(curl -s \
+#             -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+#             -H "Accept: application/vnd.github+json" \
+#             https://api.github.com/repos/$REPO/pulls/$PR_NUMBER/files \
+#             | jq -c '[.[] | .filename]')
+
+#           echo "CHANGED_FILES=$FILES" >> $GITHUB_ENV
+
+name: Gather PR Data and Summarize via Vertex AI
 
 on:
   pull_request:
     types: [opened, reopened, synchronize]
 
 jobs:
-  show-pr-data:
+  gather_and_summarize:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout PR code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
@@ -97,12 +178,12 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: '3.13.6'
-
+          
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install --upgrade google-cloud-aiplatform
-          
+          pip install --upgrade google-cloud-aiplatform google-cloud-storage
+
       - name: Print raw event JSON
         run: echo '${{ toJson(github.event) }}'
 
@@ -112,11 +193,6 @@ jobs:
           echo "PR Title: ${{ github.event.pull_request.title }}"
           echo "PR Author: ${{ github.event.pull_request.user.login }}"
 
-      - name: Get PR committer email
-        run: |
-          git fetch origin +refs/pull/${{ github.event.pull_request.number }}/merge
-          git log -1 --pretty=format:'%ae'
-          
       - name: Get PR diff
         run: |
           curl -s \
@@ -125,12 +201,10 @@ jobs:
           https://api.github.com/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }} \
           > pr.diff
 
-          python3 scripts/pr_diff.py pr.diff pr.clean.json
+          python3 scripts/pr-diff-parser.py pr.diff pr.changes.json
 
-      - name: Generate PR summary via Vertex AI
-        run: python3 scripts/generate_pr_summary.py pr.clean.json
 
-        
+
       - name: Get PR comments
         id: pr-comments
         run: |
@@ -158,3 +232,24 @@ jobs:
             | jq -c '[.[] | .filename]')
 
           echo "CHANGED_FILES=$FILES" >> $GITHUB_ENV
+
+      - name: Upload PR data to GCS
+        run: |
+          python3 scripts/pr-to-gcs.py
+        env:
+          PR_ID: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          PR_REVIEWERS: '${{ toJson(github.event.pull_request.requested_reviewers.*.login) }}'
+          PR_STATE: ${{ github.event.pull_request.state }}
+          PR_CREATED_AT: ${{ github.event.pull_request.created_at }}
+          PR_UPDATED_AT: ${{ github.event.pull_request.updated_at }}
+          CHANGED_FILES: ${{ env.CHANGED_FILES }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          AI_SUMMARY: "${{ steps.ai-summary.outputs.summary }}"
+          PR_COMMENTS: ${{ env.PR_COMMENTS }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+
+
+      
