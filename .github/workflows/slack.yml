@@ -129,3 +129,32 @@ jobs:
 
       - name: Generate PR summary via Vertex AI
         run: python3 scripts/generate_pr_summary.py pr.clean.json
+
+        
+      - name: Get PR comments
+        id: pr-comments
+        run: |
+          PR_NUMBER=${{ github.event.pull_request.number }}
+          REPO=${{ github.repository }}
+          
+          COMMENTS=$(curl -s \
+          -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+          -H "Accept: application/vnd.github+json" \
+          https://api.github.com/repos/$REPO/issues/$PR_NUMBER/comments \
+          | jq -c '[.[] | .body]')
+          
+          echo "PR_COMMENTS=$COMMENTS" >> $GITHUB_ENV
+
+      - name: Get PR changed files
+        id: changed-files
+        run: |
+          PR_NUMBER=${{ github.event.pull_request.number }}
+          REPO=${{ github.repository }}
+
+          FILES=$(curl -s \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/$REPO/pulls/$PR_NUMBER/files \
+            | jq -c '[.[] | .filename]')
+
+          echo "CHANGED_FILES=$FILES" >> $GITHUB_ENV
