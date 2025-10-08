@@ -1,37 +1,67 @@
 name: Fetch All Org Commit Users
 
 on:
-  workflow_dispatch:
+  pull_request:
+    types: [opened, reopened, synchronize]
 
 jobs:
   list-commit-users:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Fetch commit users for all org repos
+      - name: Fetch commit users for top C# org repos via GraphQL
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
           ORG: Prod
         run: |
           set -euo pipefail
 
-          echo "Fetching repositories for org: $ORG..."
-          page=1
+          echo "Fetching all repositories for org: $ORG via GraphQL..."
           repos=()
+          cursor=null
 
           while true; do
-            resp=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
-              "https://api.github.com/orgs/$ORG/repos?per_page=100&page=$page")
-            count=$(echo "$resp" | jq 'length')
-            if [[ "$count" -eq 0 ]]; then
+            if [[ "$cursor" == "null" ]]; then
+              after_param=""
+            else
+              after_param=", after: \"$cursor\""
+            fi
+
+            resp=$(curl -s -H "Authorization: bearer $GITHUB_TOKEN" \
+            -H "Content-Type: application/json" \
+             -X POST -d " \
+              { \
+                \"query\": \"query { \
+                  organization(login: \\\"$ORG\\\") { \
+                    repositories(first: 100, $after_param, orderBy: {field: PUSHED_AT, direction: DESC}) { \
+                    pageInfo { hasNextPage endCursor } \
+                    nodes { name } \
+                    } \
+                  } \
+                }\" \
+            } \
+            " https://api.github.com/graphql)
+
+            if ! echo "$resp" | jq -e '.data.organization.repositories.nodes' >/dev/null 2>&1; then
+              echo "Unexpected response from GraphQL"
+              echo "$resp"
+              exit 1
+            fi
+
+            new_repos=($(echo "$resp" | jq -r '.data.organization.repositories.nodes[].name'))
+            repos+=("${new_repos[@]}")
+
+            hasNext=$(echo "$resp" | jq -r '.data.organization.repositories.pageInfo.hasNextPage')
+            cursor=$(echo "$resp" | jq -r '.data.organization.repositories.pageInfo.endCursor')
+
+            echo "Fetched ${#repos[@]} repositories"
+
+            if [[ "$hasNext" != "true" ]]; then
               break
             fi
-            new_repos=$(echo "$resp" | jq -r '.[].name')
-            repos+=($new_repos)
-            ((page++))
           done
 
-          echo "Found ${#repos[@]} repositories"
+          echo "Total repositories fetched: ${#repos[@]}"
           echo
 
           tmpfile=$(mktemp)
@@ -43,7 +73,14 @@ jobs:
             while true; do
               commits=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
                 -H "Accept: application/vnd.github+json" \
-                "https://api.github.com/repos/$ORG/$repo/commits?per_page=100&page=$page")
+                "https://api.github.com/repos/$ORG/$repo/commits?per_page=100&page=$page") || commits="[]"
+          
+              if ! echo "$commits" | jq -e 'type=="array"' >/dev/null 2>&1; then
+                message=$(echo "$commits" | jq -r '.message // empty')
+                echo "Skipping repo \"$repo\" (page $page): unexpected response ${message:-unknown}"
+                break
+              fi
+          
               count=$(echo "$commits" | jq 'length')
               if [[ "$count" -eq 0 ]]; then
                 break
