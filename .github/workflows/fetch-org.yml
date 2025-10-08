@@ -1,0 +1,64 @@
+name: Fetch All Org Commit Users
+
+on:
+  workflow_dispatch:
+
+jobs:
+  list-commit-users:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Fetch commit users for all org repos
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ORG: Prod
+        run: |
+          set -euo pipefail
+
+          echo "Fetching repositories for org: $ORG..."
+          page=1
+          repos=()
+
+          while true; do
+            resp=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+              "https://api.github.com/orgs/$ORG/repos?per_page=100&page=$page")
+            count=$(echo "$resp" | jq 'length')
+            if [[ "$count" -eq 0 ]]; then
+              break
+            fi
+            new_repos=$(echo "$resp" | jq -r '.[].name')
+            repos+=($new_repos)
+            ((page++))
+          done
+
+          echo "Found ${#repos[@]} repositories"
+          echo
+
+          tmpfile=$(mktemp)
+          trap 'rm -f "$tmpfile"' EXIT
+
+          for repo in "${repos[@]}"; do
+            echo "Repository: $repo"
+            page=1
+            while true; do
+              commits=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+                -H "Accept: application/vnd.github+json" \
+                "https://api.github.com/repos/$ORG/$repo/commits?per_page=100&page=$page")
+              count=$(echo "$commits" | jq 'length')
+              if [[ "$count" -eq 0 ]]; then
+                break
+              fi
+
+              echo "$commits" | jq -r '.[] | [(.author.login // ""), (.commit.author.name // ""), (.commit.author.email // "")] | @tsv' >> "$tmpfile"
+
+              ((page++))
+              sleep 0.2
+            done
+          done
+
+          echo
+          echo "Unique commit authors across all repos:"
+          echo "-----------------------------------------"
+          awk -F"\t" 'BEGIN{OFS=" | "} {if($1!=""||$2!=""||$3!="") print $1,$2,tolower($3)}' "$tmpfile" | sort -u
+          echo "-----------------------------------------"
+          echo "Total unique users: $(awk -F"\t" '{if($1!=""||$2!=""||$3!="") print $0}' "$tmpfile" | sort -u | wc -l)"
