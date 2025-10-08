@@ -11,7 +11,7 @@ jobs:
     steps:
       - name: Fetch commit users for top C# org repos via GraphQL
         env:
-          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GH_PAT }}
           ORG: Prod
         run: |
           set -euo pipefail
