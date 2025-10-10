@@ -1,18 +1,11 @@
+name: Caller Workflow
+
 on:
-  pull_request:
-    types: [opened, reopened, synchronize]
+  workflow_dispatch:
 
 jobs:
-  call:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Say hello from caller
-        run: echo "Hello from caller.yml 👋"
-
-      - name: Trigger receiver workflow
-        uses: peter-evans/repository-dispatch@v4
-        with:
-          token: ${{ secrets.GH_PAT }}
-          repository: ${{ github.repository }}
-          event-type: trigger-receiver
-          client-payload: '{"ref": "${{ github.head_ref }}"}'
+  call-example:
+    uses: ./.github/workflows/receiver.yml
+    with:
+      message: "Hello from caller 👋"
+      branch: ${{ github.ref_name }}
