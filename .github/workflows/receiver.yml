@@ -1,0 +1,12 @@
+name: Receiver Workflow
+
+on:
+  repository_dispatch:
+    types: [trigger-receiver]
+
+jobs:
+  receive:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Say hello from receiver
+        run: echo "Hello from receiver.yml 👋"
