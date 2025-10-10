@@ -5,8 +5,19 @@ on:
     types: [opened, reopened, ready_for_review, synchronize]
 
 jobs:
-  call-example:
-    uses: ./.github/workflows/receiver.yml
-    with:
-      message: "Hello from caller 👋"
-      branch: ${{ github.head_ref }}
+  call:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Say hello from caller
+        run: echo "Hello from caller.yml 👋"
+
+      - name: Trigger "Receiver Workflow" workflow
+        run: |
+          gh workflow run "Receiver Workflow" \
+            --ref ${{ github.head_ref }} \
+            --repo ${{ github.repository }}
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
