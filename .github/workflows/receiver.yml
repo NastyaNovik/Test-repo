@@ -1,6 +1,8 @@
 name: Receiver Workflow
 
 on:
+  workflow_dispatch:
+  push:
   workflow_call:
     inputs:
       message:
