@@ -2,6 +2,11 @@ name: Receiver Workflow
 
 on:
   workflow_dispatch:
+    inputs:
+      branch:
+        description: "Branch to run caller workflow on"
+        required: true
+        type: string
 
 jobs:
   receiver:
@@ -9,6 +14,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.branch }}
 
       - name: Do receiver work
         run: |
@@ -17,10 +24,8 @@ jobs:
 
       - name: Trigger caller workflow again
         run: |
-          echo "Triggering caller workflow after receiver completes..."
           gh workflow run "Caller Workflow" \
-            --ref ${{ github.head_ref }} \
-            --repo ${{ github.repository }} \
+            --ref ${{ github.event.inputs.branch }} \
             -f triggered_by_receiver=true
         env:
           GH_TOKEN: ${{ secrets.GH_PAT }}
