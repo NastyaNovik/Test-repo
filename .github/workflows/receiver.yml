@@ -4,23 +4,23 @@ on:
   workflow_dispatch:
 
 jobs:
-  fetch:
+  receiver:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Do some work
+      - name: Do receiver work
         run: |
-          echo "Receiver workflow is running..."
-          sleep 5
-          echo "Receiver workflow finished work."
+          echo "Receiver workflow doing its work..."
+          sleep 10
 
-      - name: Call Caller workflow again
+      - name: Trigger caller workflow again
         run: |
-          echo "Triggering Caller workflow to continue..."
+          echo "Triggering caller workflow after receiver completes..."
           gh workflow run "Caller Workflow" \
             --ref ${{ github.head_ref }} \
-            --repo ${{ github.repository }}
+            --repo ${{ github.repository }} \
+            -f triggered_by_receiver=true
         env:
           GH_TOKEN: ${{ secrets.GH_PAT }}
