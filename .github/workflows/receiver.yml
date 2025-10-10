@@ -1,12 +1,22 @@
 name: Receiver Workflow
 
 on:
-  repository_dispatch:
-    types: [trigger-receiver]
+  workflow_call:
+    inputs:
+      message:
+        description: "Message to display"
+        required: true
+        type: string
+      branch:
+        description: "Branch name"
+        required: true
+        type: string
 
 jobs:
-  receive:
+  say-hello:
     runs-on: ubuntu-latest
     steps:
-      - name: Say hello from receiver
-        run: echo "Hello from receiver.yml 👋"
+      - name: Echo received message and branch
+        run: |
+          echo "Message: ${{ inputs.message }}"
+          echo "Branch: ${{ inputs.branch }}"
