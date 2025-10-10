@@ -2,22 +2,25 @@ name: Receiver Workflow
 
 on:
   workflow_dispatch:
-  workflow_call:
-    inputs:
-      message:
-        description: "Message to display"
-        required: true
-        type: string
-      branch:
-        description: "Branch name"
-        required: true
-        type: string
 
 jobs:
-  say-hello:
+  fetch:
     runs-on: ubuntu-latest
     steps:
-      - name: Echo received message and branch
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Do some work
         run: |
-          echo "Message: ${{ inputs.message }}"
-          echo "Branch: ${{ inputs.branch }}"
+          echo "Receiver workflow is running..."
+          sleep 5
+          echo "Receiver workflow finished work."
+
+      - name: Call Caller workflow again
+        run: |
+          echo "Triggering Caller workflow to continue..."
+          gh workflow run "Caller Workflow" \
+            --ref ${{ github.head_ref }} \
+            --repo ${{ github.repository }}
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
