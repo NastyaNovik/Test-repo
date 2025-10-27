@@ -1,15 +1,15 @@
 name: Caller Workflow
 
 on:
-  # workflow_call:
-  #   inputs:
-  #     triggered_by_receiver:
-  #       type: string
-  #       required: false
-  #       default: "false"
-  #   secrets:
-  #     GH_PAT:
-  #       required: true
+  workflow_call:
+    inputs:
+      triggered_by_receiver:
+        type: string
+        required: false
+        default: "false"
+    secrets:
+      GH_PAT:
+        required: true
 
   workflow_dispatch:
     inputs:
