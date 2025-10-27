@@ -1,15 +1,15 @@
 name: Caller Workflow
 
 on:
-  workflow_call:
-    inputs:
-      triggered_by_receiver:
-        type: string
-        required: false
-        default: "false"
-    secrets:
-      GH_PAT:
-        required: true
+  # workflow_call:
+  #   inputs:
+  #     triggered_by_receiver:
+  #       type: string
+  #       required: false
+  #       default: "false"
+  #   secrets:
+  #     GH_PAT:
+  #       required: true
 
   workflow_dispatch:
     inputs:
@@ -17,6 +17,7 @@ on:
         description: "Flag to indicate this run was triggered by receiver"
         required: false
         default: "false"
+
 
 jobs:
   call:
