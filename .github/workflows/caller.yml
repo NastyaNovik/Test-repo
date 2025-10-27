@@ -1,8 +1,16 @@
 name: Caller Workflow
 
 on:
-  pull_request:
-    types: [opened, reopened, ready_for_review, synchronize]
+  workflow_call:
+    inputs:
+      triggered_by_receiver:
+        type: string
+        required: false
+        default: "false"
+    secrets:
+      GH_PAT:
+        required: true
+
   workflow_dispatch:
     inputs:
       triggered_by_receiver:
@@ -20,8 +28,8 @@ jobs:
       - name: Step 1 - Check if triggered by receiver
         id: check
         run: |
-          echo "Triggered by receiver? ${{ github.event.inputs.triggered_by_receiver }}"
-          if [[ "${{ github.event.inputs.triggered_by_receiver }}" == "true" ]]; then
+          echo "Triggered by receiver? ${{ inputs.triggered_by_receiver }}"
+          if [[ "${{ inputs.triggered_by_receiver }}" == "true" ]]; then
             echo "Skipping receiver call to avoid infinite loop."
             CONDITION_MET=false
           else
