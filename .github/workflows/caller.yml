@@ -7,6 +7,9 @@ on:
         type: string
         required: false
         default: "false"
+    secrets:
+      GH_PAT:
+        required: true
 
   workflow_dispatch:
     inputs:
