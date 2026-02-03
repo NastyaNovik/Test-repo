@@ -1,0 +1,38 @@
+name: Test Cron PR Reviews
+
+on:
+  schedule:
+    # Каждые 2 минуты (для теста)
+    - cron: "*/2 * * * *"
+  workflow_dispatch: # чтобы можно было запускать вручную
+
+jobs:
+  test-pr-reviews:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up GitHub CLI
+        uses: cli/gh-actions/setup-gh-cli@v2
+
+      - name: Get open pull requests using GitHub CLI
+        id: get_prs
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_PAT}}
+        shell: bash
+        run: |
+          prs=$(gh pr list --state open --json url,number,isDraft,reviews --limit 100 \
+                | jq -c '[.[] | select(.isDraft == false)]')
+          echo "Found $(echo "$prs" | jq length) open PRs"
+          echo "$prs" > prs.json
+
+      - name: Print review counts
+        shell: bash
+        run: |
+          cat prs.json | jq -c '.[]' | while read -r pr; do
+            number=$(echo "$pr" | jq -r '.number')
+            url=$(echo "$pr" | jq -r '.url')
+            approved_count=$(echo "$pr" | jq '[.reviews[] | select(.state=="APPROVED")] | length')
+            echo "PR #$number ($url) has $approved_count approvals"
+          done
