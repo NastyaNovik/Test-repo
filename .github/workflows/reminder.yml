@@ -13,9 +13,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
 
-      - name: Set up GitHub CLI
-        uses: cli/gh-actions/setup-gh-cli@v2
-
       - name: Get open pull requests using GitHub CLI
         id: get_prs
         env:
