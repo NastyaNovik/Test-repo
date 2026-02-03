@@ -1,0 +1,55 @@
+name: Caller Workflow
+
+on:
+  workflow_call:
+    inputs:
+      triggered_by_receiver:
+        type: string
+        required: false
+        default: "false"
+    secrets:
+      GH_PAT:
+        required: true
+
+  workflow_dispatch:
+    inputs:
+      triggered_by_receiver:
+        description: "Flag to indicate this run was triggered by receiver"
+        required: false
+        default: "false"
+
+
+jobs:
+  call:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Step 1 - Check if triggered by receiver
+        id: check
+        run: |
+          echo "Triggered by receiver? ${{ inputs.triggered_by_receiver }}"
+          if [[ "${{ inputs.triggered_by_receiver }}" == "true" ]]; then
+            echo "Skipping receiver call to avoid infinite loop."
+            CONDITION_MET=false
+          else
+            CONDITION_MET=true
+          fi
+          echo "CONDITION_MET=$CONDITION_MET" >> $GITHUB_ENV
+
+      - name: Main work
+        if: env.CONDITION_MET == 'true'
+        run: |
+          echo "Doing main work in caller workflow..."
+
+      - name: Trigger receiver workflow
+        if: env.CONDITION_MET == 'true'
+        run: |
+          echo "Calling receiver workflow..."
+          gh workflow run "Receiver Workflow" \
+            --ref test2 \
+            -f branch=${{ github.head_ref }} \
+            --repo NastyaNovik/Test-repo
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}

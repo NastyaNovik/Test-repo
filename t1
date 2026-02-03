@@ -1,1 +1,13 @@
-test changes
+private bool TryParseJson(string json, out IJSonObject output)
+        {
+            try
+            {
+                output = new JSonReader(json).ReadAsJSonObject();
+                return true;
+            }
+            catch (Exception)
+            {
+                output = null;
+                return false;
+            }
+        }
