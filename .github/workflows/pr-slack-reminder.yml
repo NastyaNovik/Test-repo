@@ -16,6 +16,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Make script executable
+        run: chmod +x scripts/send-pr-reminder.sh
+
       - name: Get open PRs
         env:
           GITHUB_TOKEN: ${{ secrets.GH_PAT }}
@@ -28,7 +31,7 @@ jobs:
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
           SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_ID }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GH_PAT }}
           PRS_JSON: ${{ env.PRS_JSON }}
           REPO: ${{ github.repository }}
         run: |
