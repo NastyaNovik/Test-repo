@@ -25,6 +25,9 @@ echo "$PRS_JSON" | jq -c '.[]' | while read -r pr; do
   thread_ts=$(echo "$comments" | tail -n 1 | grep -oP '\[\K[^\]]+' || true)  
   thread_ts=$(echo "$thread_ts" | tr -d '[:space:]')
 
+  echo "Comments found for PR #$pr_number:"
+  echo "$comments"
+
   if [[ -z "$thread_ts" ]]; then
     echo "No Slack thread for PR #$pr_number"
     continue
