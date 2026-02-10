@@ -19,12 +19,11 @@ echo "$PRS_JSON" | jq -c '.[]' | while read -r pr; do
   fi
 
   comments=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
-    "https://api.github.com/repos/$REPO/issues/$pr_number/comments")
+    "https://api.github.com/repos/$REPO/issues/$pr_number/comments" \
+    | jq -r '.[] | select(.body | startswith("SLACK_THREAD_TS:")) | .body' || true)
 
-  thread_ts=$(echo "$comments" \
-    | jq -r '.[] | select(.body | startswith("SLACK_THREAD_TS:")) | .body' \
-    | tail -n 1 \
-    | grep -oP '\[\K[0-9]+\.[0-9]+' || true)
+  thread_ts=$(echo "$comments" | tail -n 1 | grep -oP '\[\K[^\]]+' || true)  
+  thread_ts=$(echo "$thread_ts" | tr -d '[:space:]')
 
   if [[ -z "$thread_ts" ]]; then
     echo "No Slack thread for PR #$pr_number"
