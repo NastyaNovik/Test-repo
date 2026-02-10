@@ -1,0 +1,40 @@
+name: Daily Slack PR Reminder
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'   # для теста
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: read
+  issues: read
+
+jobs:
+  reminder:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get open PRs
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_PAT }}
+        run: |
+          prs=$(gh pr list --state open --json number,url,isDraft,reviews \
+            | jq -c '[.[] | select(.isDraft == false)]')
+          echo "PRS_JSON=$prs" >> $GITHUB_ENV
+
+      - name: Send Slack reminders
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_ID }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PRS_JSON: ${{ env.PRS_JSON }}
+          REPO: ${{ github.repository }}
+        run: |
+          ./scripts/send-pr-reminder.sh \
+            "$PRS_JSON" \
+            "$REPO" \
+            "$SLACK_BOT_TOKEN" \
+            "$SLACK_CHANNEL_ID" \
+            "$GITHUB_TOKEN"
