@@ -27,6 +27,7 @@ echo "$PRS_JSON" | jq -c '.[]' | while read -r pr; do
 
   echo "Comments found for PR #$pr_number:"
   echo "$comments"
+  echo "$thread_ts"
 
   if [[ -z "$thread_ts" ]]; then
     echo "No Slack thread for PR #$pr_number"
