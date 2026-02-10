@@ -20,9 +20,9 @@ echo "$PRS_JSON" | jq -c '.[]' | while read -r pr; do
 
   comments=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
     "https://api.github.com/repos/$REPO/issues/$pr_number/comments" \
-    | jq -r '.[] | select(.body | contains("SLACK_THREAD_TS:")) | .body' || true)
+    | jq -r '.[] | select(.body | startswith("SLACK_THREAD_TS:")) | .body' || true)
 
-  thread_ts=$(echo "$comments" | tail -n 1 | grep -oP '\[\K[^\]]+' || true)  
+  thread_ts=$(echo "$comments" | grep -oP '\[\K[^\]]+' || true)
   thread_ts=$(echo "$thread_ts" | tr -d '[:space:]')
 
   echo "Comments found for PR #$pr_number:"
