@@ -51,11 +51,8 @@ echo "$PRS_JSON" | jq -c '.[]' | while read -r pr; do
   curl -s -X POST "$SLACK_API_URL/chat.postMessage" \
     -H "Authorization: Bearer $SLACK_BOT_TOKEN" \
     -H "Content-Type: application/json" \
-    --data "{
-      \"channel\": \"$SLACK_CHANNEL_ID\",
-      \"thread_ts\": \"$thread_ts\",
-      \"text\": \"Reminder: <$pr_url> still needs review 👀\"
-    }" > /dev/null
+    --data "{\"channel\":\"$SLACK_CHANNEL_ID\",\"thread_ts\":\"$thread_ts\",\"text\":\"$message\"}" \
+    | jq '.ok'
 
   echo "Reminder sent for PR #$pr_number"
 done
