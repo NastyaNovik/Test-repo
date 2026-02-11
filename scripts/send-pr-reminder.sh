@@ -36,6 +36,15 @@ echo "$PRS_JSON" | jq -c '.[]' | while read -r pr; do
 
   echo "Validating Slack thread $thread_ts"
 
+  channel_check=$(curl -s -G "$SLACK_API_URL/conversations.info" \
+      -H "Authorization: Bearer $SLACK_BOT_TOKEN" \
+      --data-urlencode "channel=$SLACK_CHANNEL_ID")
+
+  if [[ "$(echo "$channel_check" | jq -r '.ok')" != "true" ]]; then
+    echo "Slack channel '$SLACK_CHANNEL_ID' not found or bot not in channel"
+    continue
+  fi
+
   replies=$(curl -s -G "$SLACK_API_URL/conversations.replies" \
       -H "Authorization: Bearer $SLACK_BOT_TOKEN" \
       --data-urlencode "channel=$SLACK_CHANNEL_ID" \
