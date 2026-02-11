@@ -1,8 +1,8 @@
 name: Daily Slack PR Reminder
 
 on:
-  schedule:
-    - cron: '*/1 * * * *'   # для теста
+  # schedule:
+  #   - cron: '*/1 * * * *'   # для теста
   workflow_dispatch:
 
 permissions:
