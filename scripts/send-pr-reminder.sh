@@ -36,8 +36,6 @@ echo "$PRS_JSON" | jq -c '.[]' | while read -r pr; do
 
   echo "Validating Slack thread $thread_ts"
 
-  echo "$SLACK_API_URL"
-  echo "$SLACK_TOKEN"
   echo "$SLACK_CHANNEL_ID"
 
 
