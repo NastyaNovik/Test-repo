@@ -39,7 +39,8 @@ echo "$PRS_JSON" | jq -c '.[]' | while read -r pr; do
   replies=$(curl -s -G "$SLACK_API_URL/conversations.replies" \
       -H "Authorization: Bearer $SLACK_BOT_TOKEN" \
       --data-urlencode "channel=$SLACK_CHANNEL_ID" \
-      --data-urlencode "ts=$thread_ts")
+      --data-urlencode "ts=$thread_ts" \
+      --data-urlencode "limit=1")
 
   if [[ "$(echo "$replies" | jq -r '.ok')" != "true" ]]; then
     echo "Slack thread $thread_ts does not exist, skipping reminder"
