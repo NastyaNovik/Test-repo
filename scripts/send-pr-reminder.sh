@@ -40,7 +40,7 @@ echo "$PRS_JSON" | jq -c '.[]' | while read -r pr; do
 
 
   replies=$(curl -s -G "$SLACK_API_URL/conversations.replies" \
-      -H "Authorization: Bearer $SLACK_TOKEN" \
+      -H "Authorization: Bearer $SLACK_BOT_TOKEN" \
       --data-urlencode "channel=$SLACK_CHANNEL_ID" \
       --data-urlencode "ts=$thread_ts" \
       --data-urlencode "limit=1")
